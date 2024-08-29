@@ -23,7 +23,7 @@ function LandingPage() {
         <div>
           <Title style={{ color: '#fff' }}>Welcome to Video Transcoder</Title>
           <Paragraph style={{ color: '#fff', fontSize: '1.5rem' }}>
-            Transcode your videos with ease and efficiency
+            Convert mp4 with ease and efficiency
           </Paragraph>
           <Link to="/login">
             <Button type="primary" size="large" style={{ marginTop: '20px' }}>
