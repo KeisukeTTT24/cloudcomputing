@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Button, Form, Select, Typography, notification, Progress, Layout } from 'antd';
-import { UploadOutlined, LogoutOutlined } from '@ant-design/icons';
+import { Upload, Button, Form, Select, Typography, notification, Progress, Layout, Table } from 'antd';
+import { UploadOutlined, LogoutOutlined, DownloadOutlined, RedoOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AuthService from '../api/AuthService';
@@ -13,6 +13,8 @@ function VideoTranscodingPage() {
   const [selectedFormat, setSelectedFormat] = useState('avi');
   const [conversionProgress, setConversionProgress] = useState(0);
   const [converting, setConverting] = useState(false);
+  const [videoHistory, setVideoHistory] = useState([]);
+  const [selectedVideo, setSelectedVideo] = useState(null);
   const ws = useRef(null);
   const navigate = useNavigate();
 
@@ -54,8 +56,8 @@ function VideoTranscodingPage() {
     const user = AuthService.getCurrentUser();
     if (user && user.token) {
       AuthService.setAuthToken(user.token);
+      fetchVideoHistory();
     } else {
-      // If no user is logged in, redirect to login page
       navigate('/login');
     }
     connectWebSocket();
@@ -66,6 +68,19 @@ function VideoTranscodingPage() {
       }
     };
   }, [navigate]);
+
+  const fetchVideoHistory = async () => {
+    try {
+      const response = await axios.get('/api/history');
+      setVideoHistory(response.data);
+    } catch (error) {
+      console.error('Error fetching video history:', error);
+      notification.error({
+        message: 'Error',
+        description: 'Failed to fetch video conversion history',
+      });
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -112,6 +127,7 @@ function VideoTranscodingPage() {
       document.body.appendChild(link);
       link.click();
       onSuccess();
+      fetchVideoHistory(); // Refresh the video history
     } catch (error) {
       setConverting(false);
       onError(error);
@@ -122,35 +138,204 @@ function VideoTranscodingPage() {
     }
   };
 
+  const handleDownload = async (videoId) => {
+    try {
+      const response = await axios.get(`/api/download/${videoId}`, {
+        responseType: 'blob',
+      });
+      const contentDisposition = response.headers['content-disposition'];
+      const filenameMatch = contentDisposition && contentDisposition.match(/filename="?(.+)"?/i);
+      const filename = filenameMatch ? filenameMatch[1] : 'converted_video';
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading video:', error);
+      notification.error({
+        message: 'Download Failed',
+        description: 'There was an error downloading the converted video.',
+      });
+    }
+  };
+
+  const handleVideoSelect = (value) => {
+    setSelectedVideo(value);
+  };
+
+  const handleReconvert = async () => {
+    if (!selectedVideo) {
+      notification.warning({
+        message: 'No video selected',
+        description: 'Please select a video to reconvert.',
+      });
+      return;
+    }
+
+    try {
+      setConverting(true);
+      setConversionProgress(0);
+      const response = await axios.post('/api/reconvert', {
+        videoId: selectedVideo,
+        format: selectedFormat
+      });
+
+      if (response.data.success) {
+        notification.success({
+          message: 'Reconversion successful',
+          description: 'The video has been reconverted. Downloading will start shortly.',
+        });
+        await handleDownloadReconverted(response.data.videoId);
+        fetchVideoHistory(); // Refresh the video history
+      } else {
+        throw new Error(response.data.message || 'Reconversion failed');
+      }
+    } catch (error) {
+      notification.error({
+        message: 'Reconversion failed',
+        description: error.message,
+      });
+    } finally {
+      setConverting(false);
+    }
+  };
+
+  const handleDownloadReconverted = async (videoId) => {
+    try {
+      const response = await axios.get(`/api/download/${videoId}`, {
+        responseType: 'blob',
+      });
+      const contentDisposition = response.headers['content-disposition'];
+      const filenameMatch = contentDisposition && contentDisposition.match(/filename="?(.+)"?/i);
+      const filename = filenameMatch ? filenameMatch[1] : 'reconverted_video';
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading reconverted video:', error);
+      notification.error({
+        message: 'Download Failed',
+        description: 'There was an error downloading the reconverted video.',
+      });
+    }
+  };
+
+  const columns = [
+    {
+      title: 'Original Filename',
+      dataIndex: ['originalVideo', 'filename'],
+      key: 'originalFilename',
+    },
+    {
+      title: 'Converted Filename',
+      dataIndex: ['convertedVideo', 'filename'],
+      key: 'convertedFilename',
+    },
+    {
+      title: 'Output Format',
+      dataIndex: ['convertedVideo', 'format'],
+      key: 'outputFormat',
+    },
+    {
+      title: 'Duration',
+      dataIndex: ['metadata', 'duration'],
+      key: 'duration',
+      render: (duration) => `${(duration / 60).toFixed(2)} minutes`,
+    },
+    {
+      title: 'Resolution',
+      dataIndex: ['metadata', 'resolution'],
+      key: 'resolution',
+    },
+    {
+      title: 'Conversion Date',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (date) => new Date(date).toLocaleString(),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (text, record) => (
+        <Button
+          icon={<DownloadOutlined />}
+          onClick={() => handleDownload(record._id)}
+        >
+          Download
+        </Button>
+      ),
+    },
+  ];
+
+  
   return (
-    <Layout style={{ minHeight: '100vh', width: '100vw' }}>
-      <Header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px' }}>
+    <Layout style={{ height: '100vh', overflow: 'auto' }}>
+      <Header 
+        style={{ 
+          position: 'fixed', 
+          zIndex: 1, 
+          width: '100%', 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          padding: '0 20px', 
+          background: '#001529' 
+        }}
+      >
         <Title level={3} style={{ color: 'white', margin: 0 }}>Video Transcoder</Title>
         <Button icon={<LogoutOutlined />} onClick={handleLogout}>
           Logout
         </Button>
       </Header>
-      <Content style={{ padding: '20px', backgroundColor: '#f0f2f5', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ width: '100%', maxWidth: '600px', backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
+      <Content style={{ padding: '84px 20px 20px', backgroundColor: '#f0f2f5', width: '100vw' }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto 20px', backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
           <Form layout="vertical">
             <Form.Item label="Select Output Format" style={{ textAlign: 'center' }}>
               <Select defaultValue={selectedFormat} onChange={handleFormatChange} style={{ width: '100%' }}>
                 <Option value="avi">AVI</Option>
-                <Option value="mkv">MKV</Option>
                 <Option value="mov">MOV</Option>
                 <Option value="webm">WEBM</Option>
               </Select>
             </Form.Item>
-            <Form.Item label="Upload Video" style={{ textAlign: 'center' }}>
-              <Upload
-                customRequest={customRequest}
-                onChange={handleFileChange}
-                showUploadList={false}
-              >
+            <Form.Item label="Upload New Video" style={{ textAlign: 'center' }}>
+              <Upload customRequest={customRequest} onChange={handleFileChange} showUploadList={false}>
                 <Button icon={<UploadOutlined />} style={{ width: '100%' }} disabled={converting}>
                   {converting ? 'Converting...' : 'Upload Video'}
                 </Button>
               </Upload>
+            </Form.Item>
+            <Form.Item label="Or Select Previously Uploaded Video" style={{ textAlign: 'center' }}>
+              <Select
+                style={{ width: '100%', marginBottom: '10px' }}
+                placeholder="Select a video"
+                onChange={handleVideoSelect}
+                value={selectedVideo}
+              >
+                {videoHistory.map(video => (
+                  <Option key={video._id} value={video._id}>
+                    {video.originalVideo.filename}
+                  </Option>
+                ))}
+              </Select>
+              <Button 
+                icon={<RedoOutlined />} 
+                style={{ width: '100%' }} 
+                onClick={handleReconvert}
+                disabled={converting || !selectedVideo}
+              >
+                Reconvert Selected Video
+              </Button>
             </Form.Item>
             {converting && (
               <Form.Item>
@@ -158,6 +343,10 @@ function VideoTranscodingPage() {
               </Form.Item>
             )}
           </Form>
+        </div>
+        <div style={{ maxWidth: '1000px', margin: '0 auto', backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
+          <Title level={4}>Conversion History</Title>
+          <Table columns={columns} dataSource={videoHistory} rowKey="_id" />
         </div>
       </Content>
     </Layout>

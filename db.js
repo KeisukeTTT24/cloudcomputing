@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    await mongoose.connect('mongodb://localhost:27017/your_database_name', {
+    await mongoose.connect('mongodb://localhost:27017/video_transcoder', {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });

@@ -10,7 +10,6 @@ function App() {
   useEffect(() => {
     const user = AuthService.getCurrentUser();
     if (user && user.token) {
-      // You might want to verify the token with your backend here
       console.log('User is logged in');
       AuthService.setAuthToken(user.token);
     }
