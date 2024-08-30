@@ -3,9 +3,10 @@ const http = require('http');
 const WebSocket = require('ws');
 const connectDB = require('./db');
 const authRoutes = require('./authRoutes');
-const auth = require('./authMiddleware'); // Make sure this is the correct path
+const auth = require('./authMiddleware');
 const apiRoutes = require('./apiRoutes');
 const cors = require('cors');
+const path = require('path'); // Add this line
 
 const app = express();
 const server = http.createServer(app);
@@ -19,7 +20,7 @@ app.use(cors({
     origin: 'http://localhost:5173', // Replace with your frontend URL
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
-  }));
+}));
 
 // Set up WebSocket server
 wss.on('connection', (ws) => {
@@ -36,9 +37,17 @@ wss.on('connection', (ws) => {
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, 'client/dist'))); // Add this line
+
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api', auth, apiRoutes);
+
+// Catch-all handler for any request that doesn't match the ones above
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/dist/index.html'));
+});
 
 const PORT = process.env.PORT || 5000;
 
