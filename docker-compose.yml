@@ -1,8 +1,7 @@
-version: "3"
 services:
   app:
     build: .
-    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/video-transcoding:latest
+    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/n11373466-tut2:latest
     ports:
       - "8080:5000"
     environment:
