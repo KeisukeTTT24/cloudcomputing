@@ -7,20 +7,20 @@ const auth = require('./authMiddleware');
 const apiRoutes = require('./apiRoutes');
 const cors = require('cors');
 const path = require('path'); // Add this line
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
+createFolderIfNotExists(path.join(__dirname, 'uploads'));
+createFolderIfNotExists(path.join(__dirname, 'converted'));
+
 // Connect to MongoDB
 connectDB();
 
 // Enable CORS for all routes
-app.use(cors({
-    origin: [process.env.FRONTEND_URL, 'http://ec2-3-26-59-139.ap-southeast-2.compute.amazonaws.com:8080', 'http://203.153.16.178'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors());
 
 // Set up WebSocket server
 wss.on('connection', (ws) => {
@@ -59,3 +59,12 @@ app.use((err, req, res, next) => {
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+function createFolderIfNotExists(folderPath) {
+  if (!fs.existsSync(folderPath)) {
+    fs.mkdirSync(folderPath, { recursive: true });
+    console.log(`Folder created: ${folderPath}`);
+  } else {
+    console.log(`Folder already exists: ${folderPath}`);
+  }
+}

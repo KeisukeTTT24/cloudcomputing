@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 services:
   app:
     build: .
@@ -7,10 +7,9 @@ services:
       - "8080:5000"
     environment:
       - MONGO_URI=mongodb://mongo:27017/your_database_name
-      - FRONTEND_URL=http://ec2-3-26-59-139.ap-southeast-2.compute.amazonaws.com:8080
-      - VITE_API_URL=http://ec2-3-26-59-139.ap-southeast-2.compute.amazonaws.com:8080/api
-      - VITE_AUTH_URL=http://ec2-3-26-59-139.ap-southeast-2.compute.amazonaws.com:8080/auth
-      - VITE_WS_URL=ws://ec2-3-26-59-139.ap-southeast-2.compute.amazonaws.com:8080/ws
+    volumes:
+      - uploads:/app/uploads
+      - converted:/app/converted
     depends_on:
       - mongo
 
@@ -23,3 +22,5 @@ services:
 
 volumes:
   mongodb_data:
+  uploads:
+  converted:
