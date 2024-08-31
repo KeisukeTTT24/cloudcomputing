@@ -4,6 +4,7 @@ import { UploadOutlined, LogoutOutlined, DownloadOutlined, RedoOutlined } from '
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AuthService from '../api/AuthService';
+import { API_URL, WS_URL } from '../config';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -19,7 +20,7 @@ function VideoTranscodingPage() {
   const navigate = useNavigate();
 
   const connectWebSocket = () => {
-    ws.current = new WebSocket(`ws://${window.location.host}/ws`);
+    ws.current = new WebSocket(`${WS_URL}`);
 
     ws.current.onopen = () => {
       console.log('WebSocket connected');
@@ -71,7 +72,7 @@ function VideoTranscodingPage() {
 
   const fetchVideoHistory = async () => {
     try {
-      const response = await axios.get('/api/history');
+      const response = await axios.get(`${API_URL}/history`);
       setVideoHistory(response.data);
     } catch (error) {
       console.error('Error fetching video history:', error);
@@ -116,7 +117,7 @@ function VideoTranscodingPage() {
     try {
       setConverting(true);
       setConversionProgress(0);
-      const response = await axios.post('/api/convert', formData, {
+      const response = await axios.post(`${API_URL}/convert`, formData, {
         responseType: 'blob',
       });
 
@@ -140,7 +141,7 @@ function VideoTranscodingPage() {
 
   const handleDownload = async (videoId) => {
     try {
-      const response = await axios.get(`/api/download/${videoId}`, {
+      const response = await axios.get(`${API_URL}/download/${videoId}`, {
         responseType: 'blob',
       });
       const contentDisposition = response.headers['content-disposition'];
@@ -180,7 +181,7 @@ function VideoTranscodingPage() {
     try {
       setConverting(true);
       setConversionProgress(0);
-      const response = await axios.post('/api/reconvert', {
+      const response = await axios.post(`${API_URL}/reconvert`, {
         videoId: selectedVideo,
         format: selectedFormat
       });
@@ -207,7 +208,7 @@ function VideoTranscodingPage() {
 
   const handleDownloadReconverted = async (videoId) => {
     try {
-      const response = await axios.get(`/api/download/${videoId}`, {
+      const response = await axios.get(`${API_URL}/download/${videoId}`, {
         responseType: 'blob',
       });
       const contentDisposition = response.headers['content-disposition'];

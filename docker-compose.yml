@@ -2,10 +2,15 @@ version: '3'
 services:
   app:
     build: .
+    image: 901444280953.dkr.ecr.ap-southeast-2.amazonaws.com/video-transcoding:latest
     ports:
       - "8080:5000"
     environment:
       - MONGO_URI=mongodb://mongo:27017/your_database_name
+      - FRONTEND_URL=http://ec2-3-26-59-139.ap-southeast-2.compute.amazonaws.com:8080
+      - VITE_API_URL=http://ec2-3-26-59-139.ap-southeast-2.compute.amazonaws.com:8080/api
+      - VITE_AUTH_URL=http://ec2-3-26-59-139.ap-southeast-2.compute.amazonaws.com:8080/auth
+      - VITE_WS_URL=ws://ec2-3-26-59-139.ap-southeast-2.compute.amazonaws.com:8080/ws
     depends_on:
       - mongo
 

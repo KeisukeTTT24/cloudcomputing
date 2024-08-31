@@ -17,7 +17,7 @@ connectDB();
 
 // Enable CORS for all routes
 app.use(cors({
-    origin: 'http://localhost:5173', // Replace with your frontend URL
+    origin: [process.env.FRONTEND_URL, 'http://ec2-3-26-59-139.ap-southeast-2.compute.amazonaws.com:8080', 'http://203.153.16.178'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));

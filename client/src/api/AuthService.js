@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_URL = '/auth/';
+import { AUTH_URL } from '../config';
 
 const setAuthToken = (token) => {
     if (token) {
@@ -11,11 +10,11 @@ const setAuthToken = (token) => {
 };
 
 const register = (username, password) => {
-  return axios.post(API_URL + 'register', { username, password });
+  return axios.post(`${AUTH_URL}/register`, { username, password });
 };
 
 const login = (username, password) => {
-  return axios.post(API_URL + 'login', { username, password })
+  return axios.post(`${AUTH_URL}/login`, { username, password })
     .then((response) => {
       if (response.data.token) {
         localStorage.setItem('user', JSON.stringify(response.data));
@@ -26,7 +25,7 @@ const login = (username, password) => {
 
 const logout = async () => {
     try {
-      await axios.post(API_URL + 'logout');
+      await axios.post(`${AUTH_URL}/logout`);
       localStorage.removeItem('user');
       setAuthToken(null);
     } catch (error) {
