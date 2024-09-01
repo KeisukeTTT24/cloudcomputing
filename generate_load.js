@@ -6,14 +6,12 @@ const BASE_URL = process.argv[2] || 'http://localhost:8080';
 // Configuration
 const LOGIN_ENDPOINT = `${BASE_URL}/auth/login`;
 const RECONVERT_ENDPOINT = `${BASE_URL}/api/reconvert`;
+const VIDEO_HISTORY_ENDPOINT = `${BASE_URL}/api/history`;
 const INITIAL_CONCURRENT_REQUESTS = 1;
-const MAX_CONCURRENT_REQUESTS = 8;
 const DURATION_MINUTES = 5;
-const VIDEO_ID = '66d32e00cfb6e23575f1181f';
 const TARGET_FORMAT = 'mov';
 const USER_NAME = 'testuser';
 const USER_PASSWORD = 'pass';
-const RAMP_UP_INTERVAL = 60000; // 60 seconds
 const REQUEST_TIMEOUT = 300000; // 5 minutes
 
 async function login(username, password) {
@@ -26,10 +24,28 @@ async function login(username, password) {
   }
 }
 
-async function sendReconvertRequest(token) {
+async function getLatestVideoId(token) {
+  try {
+    const response = await axios.get(VIDEO_HISTORY_ENDPOINT, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    if (response.data.length > 0) {
+      return response.data[0]._id; // Assuming the API returns an array of videos sorted by createdAt in descending order
+    } else {
+      throw new Error('No videos found in history');
+    }
+  } catch (error) {
+    console.error('Error fetching video history:', error.response ? error.response.data : error.message);
+    throw error;
+  }
+}
+
+async function sendReconvertRequest(token, videoId) {
   try {
     const response = await axios.post(RECONVERT_ENDPOINT, 
-      { videoId: VIDEO_ID, format: TARGET_FORMAT },
+      { videoId: videoId, format: TARGET_FORMAT },
       { 
         headers: {
           'Content-Type': 'application/json',
@@ -51,23 +67,15 @@ async function sendReconvertRequest(token) {
 async function generateLoad() {
   try {
     const token = await login(USER_NAME, USER_PASSWORD);
+    const latestVideoId = await getLatestVideoId(token);
+    console.log(`Using latest video ID: ${latestVideoId}`);
+
     const endTime = Date.now() + DURATION_MINUTES * 60 * 1000;
     let concurrentRequests = INITIAL_CONCURRENT_REQUESTS;
     
     while (Date.now() < endTime) {
-      const requests = Array(concurrentRequests).fill().map(() => sendReconvertRequest(token));
+      const requests = Array(concurrentRequests).fill().map(() => sendReconvertRequest(token, latestVideoId));
       await Promise.all(requests);
-      
-      // Ramp up the number of concurrent requests every 60 seconds
-      /*
-      if (Date.now() % RAMP_UP_INTERVAL < 1000 && concurrentRequests < MAX_CONCURRENT_REQUESTS) {
-        concurrentRequests = Math.min(concurrentRequests + 1, MAX_CONCURRENT_REQUESTS);
-        console.log(`Increased concurrent conversions to ${concurrentRequests}`);
-      }
-      */
-
-      // Add a small delay between batches
-      //await new Promise(resolve => setTimeout(resolve, 1000));
     }
   } catch (error) {
     console.error('Load generation failed:', error.message);
